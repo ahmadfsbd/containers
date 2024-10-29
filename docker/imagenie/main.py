@@ -68,7 +68,10 @@ def process_containers():
             destination_blob = production_bucket.blob(f"containers/{container_name}.sif")
             destination_blob.upload_from_filename(sif_file)
             print(f"{container_name} has been converted and uploaded successfully.")
-    
+
+            # Clean .sif files using subprocess
+            subprocess.run(["rm", "-f", sif_file], check=True)
+
         elif scan_result.returncode == 1:
             print(f"Vulnerabilities found in {container_name}, but none are critical.")
         else:
@@ -78,7 +81,8 @@ def process_containers():
                 # Notify the relevant team/person about critical vulnerabilities
             else:
                 logging.error(f"Error scanning image {container_name}: {scan_result.stderr}")
-    
+
+        subprocess.run(["rm", "-f", staging_path], check=True)
         # Additional logging for debugging
         logging.debug(f"Scan result for {container_name} stdout: {scan_result.stdout}")
         logging.debug(f"Scan result for {container_name} stderr: {scan_result.stderr}")
