@@ -7,6 +7,7 @@ RUN apt-get update && \
     python3.9 \
     python3.9-venv \
     python3.9-distutils \
+    python3-pip \
     wget \
     build-essential \
     squashfs-tools \
@@ -19,6 +20,8 @@ RUN apt-get update && \
     libssl-dev && \
     ln -s /usr/bin/python3.9 /usr/local/bin/python && \
     rm -rf /var/lib/apt/lists/*
+
+RUN pip3 install requests google-cloud-storage
 
 # Install Go, required for building Singularity
 RUN wget -q https://go.dev/dl/go1.17.13.linux-amd64.tar.gz && \
