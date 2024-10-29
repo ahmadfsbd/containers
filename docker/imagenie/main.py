@@ -58,31 +58,26 @@ def process_containers():
             capture_output=True, text=True
         )
 
-        # Check the return code and act accordingly
-        if scan_result.returncode == 0:
-            print(f"No vulnerabilities found for {container_name}. Proceeding with conversion.")
-            sif_file = f"/tmp/{container_name}.sif"
-            subprocess.run(["singularity", "build", sif_file, f"docker-archive:{staging_path}"])
+        # Check if "CRITICAL" vulnerabilities were found
+        if "CRITICAL" in scan_result.stdout:
+            print(f"Critical vulnerabilities found in {container_name}. Skipping conversion and upload.")
+            logging.error(f"Critical vulnerabilities detected in {container_name}.")
+            subprocess.run(["rm", "-f", staging_path], check=True)
+            continue  # Skip to the next container
+
+        # If no critical vulnerabilities were found, proceed with .sif creation and upload
+        print(f"No critical vulnerabilities found for {container_name}. Proceeding with conversion.")
+        sif_file = f"/tmp/{container_name}.sif"
+        subprocess.run(["singularity", "build", sif_file, f"docker-archive:{staging_path}"])
     
-            # Upload .sif to the production bucket
-            destination_blob = production_bucket.blob(f"containers/{container_name}.sif")
-            destination_blob.upload_from_filename(sif_file)
-            print(f"{container_name} has been converted and uploaded successfully.")
-
-            # Clean .sif files using subprocess
-            subprocess.run(["rm", "-f", sif_file], check=True)
-
-        elif scan_result.returncode == 1:
-            print(f"Vulnerabilities found in {container_name}, but none are critical.")
-        else:
-            # Handle critical vulnerabilities or errors
-            if scan_result.returncode == 2:
-                logging.error(f"Critical vulnerabilities found in {container_name}:\n{scan_result.stdout}")
-                # Notify the relevant team/person about critical vulnerabilities
-            else:
-                logging.error(f"Error scanning image {container_name}: {scan_result.stderr}")
-
-        subprocess.run(["rm", "-f", staging_path], check=True)
+        # Upload .sif to the production bucket
+        destination_blob = production_bucket.blob(f"containers/{container_name}.sif")
+        destination_blob.upload_from_filename(sif_file)
+        print(f"{container_name} has been converted and uploaded successfully.")
+    
+        # Clean up .sif and .tar files
+        subprocess.run(["rm", "-f", sif_file, staging_path], check=True)
+ 
         # Additional logging for debugging
         logging.debug(f"Scan result for {container_name} stdout: {scan_result.stdout}")
         logging.debug(f"Scan result for {container_name} stderr: {scan_result.stderr}")
