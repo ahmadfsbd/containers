@@ -1,6 +1,8 @@
 import subprocess
 import requests
 import logging
+import time
+
 from google.cloud import storage
 
 def get_container_names(org):
@@ -30,18 +32,22 @@ def process_containers():
 
     # Download the Trivy vulnerability database
     command = ["trivy", "--cache-dir", "/tmp/", "image", "--download-db-only"]
-    try:
+    for attempt in range(5):
         download_result = subprocess.run(command, capture_output=True, text=True)
     
         # Check for success or error messages
         if download_result.returncode == 0:
             print("Vulnerability database downloaded successfully.")
+            break  # Exit the loop if the command was successful
         else:
             print(f"Error downloading database: {download_result.stderr}")
-    
-    except Exception as e:
-        print(f"An error occurred: {e}")
-
+            if attempt < 4:  # Don't sleep after the last attempt
+                print("Retrying in 5 seconds...")
+                time.sleep(5)
+    else:
+        print("Failed to download the vulnerability database after 5 attempts.")
+        sys.exit(1)  # Exit the script with a non-zero status to indicate failure
+   
     for container_name in container_names:
         image = f"docker://{org}/{container_name}:latest"
         staging_path = f"/tmp/{container_name}.tar"
@@ -57,11 +63,16 @@ def process_containers():
             ],
             capture_output=True, text=True
         )
+        # Print the scan output
+        print(f"Scan result for {container_name}:\n{scan_result.stdout}")
 
         # Check if "CRITICAL" vulnerabilities were found
         if "CRITICAL" in scan_result.stdout:
             print(f"Critical vulnerabilities found in {container_name}. Skipping conversion and upload.")
             logging.error(f"Critical vulnerabilities detected in {container_name}.")
+            # Additional logging for debugging
+            logging.debug(f"Scan result for {container_name} stdout: {scan_result.stdout}")
+            logging.debug(f"Scan result for {container_name} stderr: {scan_result.stderr}")
             subprocess.run(["rm", "-f", staging_path], check=True)
             continue  # Skip to the next container
 
