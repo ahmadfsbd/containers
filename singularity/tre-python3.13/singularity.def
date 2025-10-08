@@ -1,0 +1,227 @@
+Bootstrap: docker
+From: python:3.13-slim
+
+%environment
+    export LANG=C.UTF-8
+    export LC_ALL=C.UTF-8
+
+%post
+    # Update system and install build dependencies
+    apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        git \
+        wget \
+        curl \
+        ca-certificates \
+        libssl-dev \
+        libffi-dev \
+        libpq-dev \
+        libxml2-dev \
+        libxslt1-dev \
+        zlib1g-dev \
+        libbz2-dev \
+        libreadline-dev \
+        libsqlite3-dev \
+        libncurses-dev \
+        libncursesw5-dev \
+        tk-dev \
+        liblzma-dev \
+        python3-tk \
+        gfortran \
+        libblas-dev \
+        liblapack-dev \
+        libopenblas-dev \
+        && rm -rf /var/lib/apt/lists/*
+
+    # Upgrade pip
+    python3 -m pip install --upgrade pip setuptools wheel
+
+    # Step 1: Install build-heavy packages first (excluding packages with Python 3.13 compatibility issues)
+    python3 -m pip install scanpy tensorflow
+    
+    # Try to install datatable from conda-forge or use polars as alternative
+    # python3 -m pip install datatable  # Uncomment when Python 3.13 support is available
+    
+    # Skip vaex for now due to Python 3.13 compatibility issues
+    # python3 -m pip install vaex  # Uncomment when Python 3.13 support is available
+    
+    # Note: firthlogist removed from package list - requires Python < 3.11
+    # Note: pycaret removed - causes very slow dependency resolution with many version conflicts
+
+    # Step 2: Install remaining PyPI packages (excluding Jupyter)
+    python3 -m pip install \
+        polars==1.33.0 \
+        aiohttp \
+        altair \
+        argparse \
+        asn1crypto \
+        attrs \
+        autoflake \
+        automat \
+        backcall \
+        beautifulsoup4 \
+        bitarray \
+        black \
+        bleach \
+        blinker \
+        bokeh \
+        brewer2mpl \
+        bump2version \
+        certifi \
+        cget \
+        chardet \
+        click \
+        cloudpathlib \
+        colorama \
+        configobj \
+        constantly \
+        cryptography \
+        cx_oracle \
+        cycler \
+        dask \
+        datetime \
+        decorator \
+        defusedxml \
+        docutils \
+        entrypoints \
+        fastapi \
+        flake8 \
+        flake8-docstrings \
+        flask \
+        flask_compress \
+        ggplot \
+        google-cloud-storage \
+        gunicorn \
+        h5py \
+        hail \
+        httplib2 \
+        hyperlink \
+        idna \
+        incremental \
+        ipykernel \
+        ipython \
+        ipython-genutils \
+        ipywidgets \
+        isort \
+        jedi \
+        jinja2 \
+        joblib \
+        jsonpatch \
+        jsonpointer \
+        jsonschema \
+        keras \
+        keyring \
+        keyrings.alt \
+        kiwisolver \
+        ldsc \
+        ldpred \
+        markupsafe \
+        matplotlib \
+        matplotlib-venn \
+        mistune \
+        mypy \
+        mypy-extensions \
+        myst_nb \
+        nbconvert \
+        nbformat \
+        netifaces \
+        nimfa \
+        nltk \
+        notebook \
+        numpy \
+        oauthlib \
+        optuna \
+        openpyxl \
+        packaging \
+        pandas \
+        pandocfilters \
+        parso \
+        pexpect \
+        pickleshare \
+        pillow \
+        pip-tools \
+        plinkio \
+        prometheus-client \
+        prompt-toolkit \
+        ptyprocess \
+        pyaml \
+        pyarrow \
+        pyasn1 \
+        pyasn1-modules \
+        pycryptodome \
+        pydantic \
+        pydeseq2 \
+        pygments \
+        pyjwt \
+        pyodbc \
+        pyopenssl \
+        pyparsing \
+        pyrsistent \
+        pysam \
+        pyserial \
+        pytest \
+        pytest-asyncio \
+        pytest-cases \
+        pytest-cov \
+        pytest-flask \
+        pytest-httpx \
+        python-dateutil \
+        python-debian \
+        pytz \
+        pytz-deprecation-shim \
+        pyxdg \
+        pyzmq \
+        qmplot \
+        qtconsole \
+        requests \
+        requests-unixsocket \
+        sas7bdat \
+        scikit-learn \
+        scipy \
+        seaborn \
+        secretstorage \
+        send2trash \
+        service-identity \
+        setuptools \
+        shap \
+        singledispatch \
+        six \
+        sqlalchemy \
+        statistics \
+        statsmodels \
+        tabpfn \
+        terminado \
+        testpath \
+        tornado \
+        tox \
+        traitlets \
+        twisted \
+        types-PyYAML \
+        types-requests \
+        types-setuptools \
+        tzdata \
+        urllib3 \
+        uvloop \
+        vcfpy \
+        vegafusion \
+        vegafusion-python-embed \
+        virtualenv \
+        visidata \
+        visions \
+        vl-convert-python \
+        wcwidth \
+        webencodings \
+        widgetsnbextension \
+        xgboost \
+        xlsxwriter \
+        ydata-profiling \
+        zope.interface
+
+    # Step 3: Install Git packages last
+    python3 -m pip install \
+        git+https://github.com/brielin/Popcorn.git@ef4455a970d4104832cca02510c555d9220b1414 \
+        git+https://github.com/genes-and-health/tre-tools.git
+
+%runscript
+    echo "Container ready. Use 'python3'."
+    exec "$@"
