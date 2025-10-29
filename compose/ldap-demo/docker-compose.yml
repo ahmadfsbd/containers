@@ -1,0 +1,27 @@
+version: "3.8"
+
+services:
+  ldap:
+    image: osixia/openldap:latest
+    container_name: ldap
+    environment:
+      LDAP_ORGANISATION: "NubeStack"
+      LDAP_DOMAIN: "nubestack.local"
+      LDAP_ADMIN_PASSWORD: "admin"
+    ports:
+      - "389:389"   # LDAP
+      - "636:636"   # Secure LDAP
+    restart: unless-stopped
+
+  ldap-ui:
+    image: osixia/phpldapadmin:latest
+    container_name: ldap-ui
+    environment:
+      PHPLDAPADMIN_LDAP_HOSTS: ldap
+      PHPLDAPADMIN_HTTPS: "false"
+      PHPLDAPADMIN_TRUST_PROXY_SSL: "true"
+      PHPLDAPADMIN_ALLOW_BIND_ANON: "true"
+    ports:
+      - "9000:80"
+    restart: unless-stopped
+
