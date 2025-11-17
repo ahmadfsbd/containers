@@ -1,0 +1,45 @@
+Bootstrap: docker
+From: python:3.11-slim-bullseye
+
+%environment
+    export DEBIAN_FRONTEND=noninteractive
+
+%post
+    apt-get update && apt-get install -y --no-install-recommends \
+        build-essential cmake git wget curl ca-certificates \
+        libfreetype6-dev libpng-dev libglib2.0-0 libeigen3-dev libxml2-dev libxslt1-dev \
+        libffi-dev ffmpeg pkg-config swig libhdf5-dev hmmer muscle \
+        && rm -rf /var/lib/apt/lists/*
+
+    python3 -m pip install --upgrade pip setuptools wheel
+
+    cd /opt
+    git clone https://github.com/manifoldbio/mber-open.git
+    cd mber-open
+
+    python3 -m pip install openmm>=8.0.0
+    python3 -m pip install git+https://github.com/openmm/pdbfixer.git
+
+    # ANARCI install (Spack recipe approach)
+    git clone https://github.com/oxpig/ANARCI.git /tmp/anarci
+    cd /tmp/anarci
+    sed -i 's/from distutils.core import setup/from setuptools import setup/' setup.py
+    sed -i 's/cmdclass\s*=\s*{[^}]*}/cmdclass={}/' setup.py
+    python3 -m pip install --no-cache-dir --no-build-isolation --no-deps .
+    cd build_pipeline && bash RUN_pipeline.sh && cd ..
+    SITE_PACKAGES=$(python3 -c "import site; print(site.getsitepackages()[0])")
+    mkdir -p ${SITE_PACKAGES}/anarci/dat
+    cp build_pipeline/curated_alignments/germlines.py ${SITE_PACKAGES}/anarci/
+    cp -r build_pipeline/HMMs ${SITE_PACKAGES}/anarci/dat/
+    cd / && rm -rf /tmp/anarci
+
+    cd /opt/mber-open
+    python3 -m pip install --no-cache-dir -r requirements.txt || true
+    python3 -m pip install --no-cache-dir -e .
+    python3 -m pip install --no-cache-dir -e protocols
+
+    bash download_af_weights.sh || true
+
+%runscript
+    exec python3 "$@"
+    exec python "$@"
