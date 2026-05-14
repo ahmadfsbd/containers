@@ -9,7 +9,7 @@ echo "==> Building Docker image ${IMAGE_NAME}:${TAG} ..."
 docker build -t "${IMAGE_NAME}:${TAG}" .
 
 echo "==> Converting to Singularity SIF: ${SIF} ..."
-singularity build --force "${SIF}" "docker-daemon://${IMAGE_NAME}:${TAG}"
+sudo singularity build --force "${SIF}" Singularity.def
 
 echo "==> Verifying ..."
 singularity exec "${SIF}" python3 -c "

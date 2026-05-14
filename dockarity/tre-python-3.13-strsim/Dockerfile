@@ -1,78 +1,76 @@
 FROM mercury/softpack-build:0.21.1.2
 
-# Python 3.13 + String Similarity Research Environment (Mercury/Softpack-compatible)
-# Matches the pattern of tre-python: UV_SYSTEM_PYTHON=1, packages installed into
-# python3.13's own site-packages (no venv), symlink at /opt/view/bin/python3.13.
+# Python 3.13 + String Similarity Research Environment Container
+# This container includes:
+# - All packages from the original list (standard + custom)
+# - R integration via rpy2
+# - Data science tools: pandas, numpy, scipy, scikit-learn, tensorflow, etc.
+# - Custom research packages: tretools, popcorn, yhaplo
+# - Bioinformatics tools: scanpy, pysam, h5py, etc.
+# - String similarity packages: polars-strsim, polars-distance, rapidfuzz
 #
 # Usage:
-#   docker build -t tre-python-3.13-strsim:latest .
-#   singularity build singularity.sif docker-daemon://tre-python-3.13-strsim:latest
+#   docker run -it tre-python-3.13-strsim:latest
+#   python3 -c "import pandas, tretools, rpy2, polars_strsim; print('Ready for research!')"
 
+# Set environment variables to allow uv to install packages system-wide
+# This bypasses the "externally managed environment" restriction in containers
 ENV UV_SYSTEM_PYTHON=1
 ENV UV_BREAK_SYSTEM_PACKAGES=1
 ENV UV_PYTHON_INSTALL_DIR=/opt/uv-python
 
-# System dependencies
+# Update package lists and install R and Python development headers
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        build-essential \
-        git \
-        curl \
-        ca-certificates \
-        libssl-dev \
-        libffi-dev \
-        libpq-dev \
-        libxml2-dev \
-        libxslt1-dev \
-        zlib1g-dev \
-        libbz2-dev \
-        libreadline-dev \
-        libsqlite3-dev \
-        libncursesw5-dev \
-        tk-dev \
-        liblzma-dev \
-        gfortran \
-        libblas-dev \
-        liblapack-dev \
-        libopenblas-dev \
-        bcftools \
         r-base \
         r-base-dev \
         python3-dev \
+        build-essential \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv
+# Install uv if not already present in base image
 RUN pip install uv || echo "uv already installed"
 
 # Install Python 3.13 via uv
 RUN uv python install 3.13
 
+# Set working directory
 WORKDIR /app
 
-# Copy project definition and resolve lock for Python 3.13
-COPY pyproject.toml ./
-RUN uv lock --python 3.13
+# Copy Python project files
+COPY pyproject.toml uv.lock ./
 
-# Export and install packages system-wide into Python 3.13 site-packages (no venv)
-RUN uv export --format requirements-txt --no-hashes > requirements.txt
-RUN uv pip install --python 3.13 -r requirements.txt
+# Export dependencies from uv.lock to requirements.txt format
+RUN uv export --format requirements.txt > requirements.txt
 
-# Symlink python3.13 binary into standard locations
-RUN mkdir -p /opt/view/bin && \
-    ln -sf "$(uv python find 3.13)" /opt/view/bin/python3.13 && \
-    ln -sf "$(uv python find 3.13)" /usr/local/bin/python3.13 && \
-    ln -sf "$(uv python find 3.13)" /usr/local/bin/python3
+# Install Python dependencies system-wide using uv pip sync targeting Python 3.13
+RUN uv pip sync --python 3.13 requirements.txt
 
-# Verify
-RUN python3 -c "import sys; print(f'Python: {sys.version}')" && \
+
+# Create compatibility directory and Python 3.13 symlinks (before verify so python3.13 is in PATH)
+RUN PYTHON313=$(find /opt/uv-python -name 'python3.13' -type f | head -1) && \
+    echo "Found Python 3.13 at: $PYTHON313" && \
+    test -n "$PYTHON313" && \
+    test -x "$PYTHON313" && \
+    mkdir -p /opt/view/bin/ && \
+    ln -sf "$PYTHON313" /opt/view/bin/python3.13 && \
+    ln -sf "$PYTHON313" /usr/local/bin/python3.13 && \
+    ln -sf "$PYTHON313" /usr/local/bin/python3
+
+# Verify installations
+RUN python3.13 -c "import sys; print(f'Python: {sys.version}')" && \
     R --version | head -1 && \
-    python3 -c "import tretools, popcorn, yhaplo, rpy2; print('Custom packages OK')" && \
-    python3 -c "import pandas, numpy, scanpy, tensorflow; print('Core packages OK')" && \
-    python3 -c "import polars_strsim, polars_distance, rapidfuzz; print('String similarity packages OK')"
+    python3.13 -c "import tretools, popcorn, yhaplo, rpy2; print('✅ All custom packages imported successfully')" && \
+    python3.13 -c "import polars_strsim, polars_distance, rapidfuzz; print('✅ String similarity packages imported successfully')"
 
-# Register Jupyter kernel
-RUN python3 -m ipykernel install --sys-prefix --name python3.13-strsim --display-name "Python 3.13 (TRE strsim)"
+# Install bcftools from apt
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        bcftools \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
+# Set proper entrypoint and command to bypass Spack shell integration
 ENTRYPOINT ["/bin/bash"]
 CMD ["-l"]

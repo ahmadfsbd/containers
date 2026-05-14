@@ -8,10 +8,11 @@ Bootstrap: docker-daemon
 From: tre-python-3.13-strsim:latest
 
 %environment
-    export VIRTUAL_ENV=/opt/venv
-    export PATH="/opt/venv/bin:$PATH"
+    export PATH="/opt/view/bin:/usr/local/bin:$PATH"
     export LANG=C.UTF-8
     export LC_ALL=C.UTF-8
+    # Ensure the uv-managed Python 3.13 site-packages are importable
+    export PYTHONPATH="$(find /opt/uv-python -name 'site-packages' -type d 2>/dev/null | head -1)"
 
 %runscript
-    exec python3 "$@"
+    exec python3.13 "$@"
