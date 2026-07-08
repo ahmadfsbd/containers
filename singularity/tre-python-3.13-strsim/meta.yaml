@@ -176,3 +176,5 @@ packages:
 - py-ldsc
 - py-pycryptodome
 - py-cget
+executables:
+- python3.13

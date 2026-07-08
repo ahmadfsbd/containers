@@ -1,0 +1,5 @@
+description: GWASPipe container imported from ghcr.io/ht-diva/gwaspipe:b92d5b.
+packages:
+- gwaspipe@b92d5b
+executables:
+- gwaspipe

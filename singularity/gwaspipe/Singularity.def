@@ -1,0 +1,45 @@
+Bootstrap: docker
+From: ghcr.io/ht-diva/gwaspipe:b92d5b
+
+%labels
+    Software GWASPipe
+    Version b92d5b
+    Source https://github.com/ht-diva/gwaspipe
+    DockerImage ghcr.io/ht-diva/gwaspipe:b92d5b
+
+%environment
+    export LANG=C.UTF-8
+    export LC_ALL=C.UTF-8
+
+%runscript
+    if [ "$#" -eq 0 ]; then
+        exec gwaspipe --help
+    fi
+
+    case "$1" in
+        -*)
+            exec gwaspipe "$@"
+            ;;
+    esac
+
+    if command -v "$1" >/dev/null 2>&1; then
+        exec "$@"
+    fi
+
+    exec gwaspipe "$@"
+
+%test
+    gwaspipe --help >/dev/null
+
+%help
+    GWASPipe Singularity/Apptainer image converted from:
+      ghcr.io/ht-diva/gwaspipe:b92d5b
+
+    Build:
+      singularity build gwaspipe_b92d5b.sif Singularity.def
+      apptainer build gwaspipe_b92d5b.sif Singularity.def
+
+    Examples:
+      singularity run gwaspipe_b92d5b.sif --help
+      singularity run gwaspipe_b92d5b.sif gwaspipe --help
+      singularity exec gwaspipe_b92d5b.sif gwaspipe --help
