@@ -1,0 +1,26 @@
+bundle:
+  name: vep116-plugins
+  created_for: TRE plugin upload
+  vep_version: "116.0"
+  ensembl_release: 116
+  gcs_prefix: gs://qmul-production-library-red/helper-files-and-scripts/vep/116/Plugins/
+
+plugin_code:
+  ensembl_vep_plugins:
+    source: https://github.com/Ensembl/VEP_plugins/archive/refs/heads/release/116.tar.gz
+    destination: Plugins/
+    required: true
+    note: Full official Ensembl VEP plugin set for release 116.
+  loftee:
+    source: https://github.com/konradjk/loftee/archive/refs/heads/grch38.tar.gz
+    destination: Plugins/loftee_GRCh38/
+    required: true
+    note: LOFTEE is downloaded separately because it is not part of the standard Ensembl plugin archive.
+
+expected_requested_plugins:
+  - Plugins/AlphaMissense.pm
+  - Plugins/CADD.pm
+  - Plugins/REVEL.pm
+  - Plugins/SpliceAI.pm
+  - Plugins/dbNSFP.pm
+  - Plugins/loftee_GRCh38/LoF.pm

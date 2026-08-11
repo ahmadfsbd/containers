@@ -1,0 +1,5 @@
+description: VEP (Variant Effect Predictor) predicts the functional effects of genomic variants.
+packages:
+  - vep
+executables:
+  - vep

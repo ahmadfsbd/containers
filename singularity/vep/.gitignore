@@ -1,0 +1,20 @@
+# Generated Singularity images
+*.sif
+*.simg
+
+# Local plugin staging outputs
+vep116/
+bundle/
+staging/
+downloads/
+source_archives/
+
+# Downloaded plugin output
+Plugins/
+manifest/checksums.sha256
+
+# Downloaded source archives
+*.tar
+*.tar.gz
+*.tgz
+*.zip

@@ -1,0 +1,50 @@
+Bootstrap: docker
+From: ensemblorg/ensembl-vep:release_116.0
+
+# Metadata labels for the VEP container image.
+%labels
+    Author HGI
+    Version 116.0
+    Source https://github.com/Ensembl/ensembl-vep
+    DockerImage ensemblorg/ensembl-vep:release_116.0
+
+# Runtime environment variables inside the container.
+%environment
+    export LANG=en_US.UTF-8
+    export LC_ALL=en_US.UTF-8
+    export VEP_NO_UPDATE=1
+    export VEP_NO_HTSLIB=1
+
+# Default command when running the container.
+%runscript
+    if [ "$#" -eq 0 ]; then
+        exec vep --help
+    fi
+
+    case "$1" in
+        -*)
+            exec vep "$@"
+            ;;
+    esac
+
+    if command -v "$1" >/dev/null 2>&1; then
+        exec "$@"
+    fi
+
+    exec vep "$@"
+
+# Quick sanity check for the built image.
+%test
+    vep --help >/dev/null
+    INSTALL.pl --help >/dev/null
+
+%help
+    Ensembl Variant Effect Predictor Singularity/Apptainer image converted from:
+      ensemblorg/ensembl-vep:release_116.0
+
+    Build:
+      singularity build vep_116.0.sif singularity.def
+      apptainer build vep_116.0.sif singularity.def
+
+    Examples:
+      singularity run vep_116.0.sif --help
