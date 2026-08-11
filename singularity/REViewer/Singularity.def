@@ -1,0 +1,25 @@
+Bootstrap: docker
+From: debian:12
+
+%labels
+    Software REViewer
+    Version  v0.2.7
+    Source https://github.com/Illumina/REViewer/releases
+
+%environment
+    export LANG=C.UTF-8
+    export LC_ALL=C.UTF-8
+
+%post
+    apt-get update && apt-get install -y --no-install-recommends wget ca-certificates gzip
+
+    wget -O /tmp/REViewer.gz \
+        https://github.com/Illumina/REViewer/releases/download/v0.2.7/REViewer-v0.2.7-linux_x86_64.gz
+
+    gunzip -c /tmp/REViewer.gz > /usr/local/bin/REViewer
+    chmod +x /usr/local/bin/REViewer
+
+    rm -rf /tmp/REViewer.gz /var/lib/apt/lists/*
+
+%runscript
+    exec REViewer "$@"

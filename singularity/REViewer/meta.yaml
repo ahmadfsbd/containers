@@ -1,0 +1,5 @@
+description: REViewer is a tool for visualizing alignments of reads in regions containing tandem repeats.
+packages:
+- REViewer
+executables:
+- REViewer
