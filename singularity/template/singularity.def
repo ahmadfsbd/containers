@@ -1,0 +1,54 @@
+# Singularity definition file template
+# Use this file to build a self-contained container image.
+# Common sections are Bootstrap, From, Labels, Environment, Setup, Files, Post, Runscript, and Test.
+
+# Bootstrap section defines the builder type for Singularity.
+# From selects the base image used for the container image.
+Bootstrap: docker
+From: ubuntu:24.04
+
+# Labels section defines metadata for the image.
+%labels
+    Author Your Name or Org
+    Version 0.1.0
+    Source https://example.com
+
+# Environment section sets runtime environment variables inside the container.
+%environment
+    export LANG=C.UTF-8
+    export LC_ALL=C.UTF-8
+
+# Setup section runs on the build host before %post and is optional.
+%setup
+    echo "Running setup phase"
+
+# Files section copies local host files into the image during build.
+# Example source/destination mappings can be added here.
+%files
+    # ./local-files/myconfig.conf /etc/myapp/config.conf
+    # ./local-script.sh /usr/local/bin/local-script.sh
+
+# Post section installs packages, builds software, and configures the image.
+%post
+    apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        wget \
+        curl \
+        build-essential \
+        python3 \
+        python3-pip \
+        && rm -rf /var/lib/apt/lists/*
+
+    # Install package dependencies and software here.
+    python3 -m pip install package-name
+
+    # Make any copied scripts executable.
+    # chmod +x /usr/local/bin/local-script.sh
+
+# Runscript defines the default executable when running the container.
+%runscript
+    exec "$@"
+
+# Test section can run verification commands after build.
+%test
+    echo "Singularity container built successfully"

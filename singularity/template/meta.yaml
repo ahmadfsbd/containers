@@ -1,0 +1,5 @@
+description: "Short description of the package or container."
+packages:
+  - package-name
+executables:
+  - executable-name
