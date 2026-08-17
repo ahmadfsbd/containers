@@ -1,0 +1,5 @@
+description: "GangSTR is a tool for genome-wide profiling of tandem repeats from short reads."
+packages:
+  - GangSTR
+executables:
+  - GangSTR

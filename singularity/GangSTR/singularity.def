@@ -1,0 +1,83 @@
+Bootstrap: docker
+From: ubuntu:24.04
+
+%labels
+    Software GangSTR
+    Version 2.5.0
+    Source https://github.com/gymreklab/GangSTR
+
+%environment
+    export LANG=C.UTF-8
+    export LC_ALL=C.UTF-8
+
+%post
+    set -eux
+    export DEBIAN_FRONTEND=noninteractive
+
+    apt-get update
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        cmake \
+        git \
+        wget \
+        ca-certificates \
+        autoconf \
+        automake \
+        libtool \
+        pkg-config \
+        zlib1g-dev \
+        libbz2-dev \
+        liblzma-dev \
+        libcurl4-openssl-dev
+
+    wget -O /tmp/GangSTR-2.5.0-Source.tar.gz \
+        https://github.com/gymreklab/GangSTR/releases/download/v2.5/GangSTR-2.5.0-Source.tar.gz
+
+    tar -xzf /tmp/GangSTR-2.5.0-Source.tar.gz -C /tmp
+
+    # Upstream CMakeLists.txt runs bare `autoreconf` on a freshly cloned
+    # htslib checkout, which has no config.sub/config.guess yet; those are
+    # only generated with the -i (--install) flag.
+    sed -i 's/UPDATE_COMMAND autoreconf /UPDATE_COMMAND autoreconf -i /' \
+        /tmp/GangSTR-2.5.0-Source/CMakeLists.txt
+
+    # htslib 1.11's configure.ac sets host_alias=unknown-$(uname -s) as a
+    # fallback for its own shared-lib-type check, which runs before the
+    # standard host canonicalization and poisons it when --host isn't
+    # passed explicitly. Pass --host so that fallback never triggers.
+    HOST_TRIPLE="$(gcc -dumpmachine)"
+    sed -i "s#/htslib/configure #/htslib/configure --host=${HOST_TRIPLE} #" \
+        /tmp/GangSTR-2.5.0-Source/CMakeLists.txt
+
+    mkdir -p /tmp/GangSTR-2.5.0-Source/build
+    cd /tmp/GangSTR-2.5.0-Source/build
+    cmake ..
+    make -j"$(nproc)"
+    cmake --install .
+
+    # htslib always installs both libhts.a and libhts.so; GangSTR's linker
+    # picks the shared one, so it needs to be reachable at runtime too.
+    cp -P thirdparty/htslib/lib/libhts.so* /usr/local/lib/
+    ldconfig
+
+    cd /
+    rm -rf /tmp/GangSTR-2.5.0-Source.tar.gz /tmp/GangSTR-2.5.0-Source
+    apt-get clean
+    rm -rf /var/lib/apt/lists/*
+
+%runscript
+    exec GangSTR "$@"
+
+%test
+    GangSTR --help 2>&1 | grep -q "estimated genotypes"
+
+%help
+    GangSTR - a tool for genome-wide profiling of tandem repeats from short reads.
+    Source: https://github.com/gymreklab/GangSTR
+
+    Build:
+      singularity build gangstr.sif singularity.def
+      apptainer build gangstr.sif singularity.def
+
+    Example:
+      singularity run gangstr.sif --help
