@@ -1,0 +1,121 @@
+Bootstrap: docker
+From: python:3.11-slim
+
+# Metadata labels for the PhecodeX mapper image.
+#
+# Version is the MAPPER's version, never a PhecodeX version. The image carries no
+# map at all, and the release later bound into it is a hybrid of PhecodeX 1.1
+# (ICD-10-CM) and 1.0 (WHO ICD-10). Which PhecodeX versions a run actually used is
+# recorded in the release's manifest.json under phecodex_upstream_versions.
+%labels
+    Author HGI
+    Software phecodex-mapper
+    Version 0.1.0
+    Source https://github.com/astheeggeggs/phecode_mapping
+    BaseImage python:3.11-slim
+
+# Staged by ./prepare_offline_bundle.sh ./bundle before building.
+#
+# bundle/release/ is deliberately NOT copied in. The mapping release is data: it is
+# staged to secure storage and bind-mounted read-only at run time, so that one image
+# serves any release and the image itself carries no map and no cohort data.
+%files
+    bundle/pyproject.toml /opt/phecodex/pyproject.toml
+    bundle/requirements-lock.txt /opt/phecodex/requirements-lock.txt
+    bundle/README.md /opt/phecodex/README.md
+    bundle/ANALYST_GUIDE.md /opt/phecodex/ANALYST_GUIDE.md
+    bundle/LICENSE /opt/phecodex/LICENSE
+    bundle/src /opt/phecodex/src
+    bundle/examples /opt/phecodex/examples
+    bundle/scripts /opt/phecodex/scripts
+
+%post
+    set -eux
+    export DEBIAN_FRONTEND=noninteractive
+
+    # R is not in the upstream definition, but two of the scripts it ships are R:
+    # prepare_ukb_for_mapping.R (turns a UK Biobank wide phenotype extract into the
+    # canonical cohort/events pair) and deidentify_ukb_for_testing.R. Without an R
+    # interpreter those files are present but unrunnable, so the UK Biobank entry
+    # point to the whole workflow is missing. data.table is their only R dependency
+    # and Debian packages it, so take it from apt rather than compiling from CRAN.
+    apt-get update
+    apt-get install -y --no-install-recommends \
+        r-base-core \
+        r-cran-data.table
+
+    cd /opt/phecodex
+    python -m pip install --no-cache-dir --upgrade pip
+    python -m pip install --no-cache-dir -r requirements-lock.txt
+    python -m pip install --no-cache-dir .
+    python -m pip cache purge
+
+    apt-get clean
+    rm -rf /var/lib/apt/lists/*
+
+# Runtime environment variables inside the container.
+%environment
+    export LANG=C.UTF-8
+    export LC_ALL=C.UTF-8
+    export PHECODEX_HOME=/opt/phecodex
+    export PYTHONDONTWRITEBYTECODE=1
+    export PYTHONUNBUFFERED=1
+
+# Default to phecodex-map, but let the shipped scripts be invoked directly so that
+# `run img.sif Rscript ...` and `run img.sif python ...` work without `exec`.
+%runscript
+    if [ "$#" -eq 0 ]; then
+        exec phecodex-map --help
+    fi
+
+    case "$1" in
+        -*)
+            exec phecodex-map "$@"
+            ;;
+    esac
+
+    if command -v "$1" >/dev/null 2>&1; then
+        exec "$@"
+    fi
+
+    exec phecodex-map "$@"
+
+# Quick sanity check for the built image. Covers both interpreters, because the
+# point of this definition over the upstream one is that R works.
+%test
+    phecodex-map --help >/dev/null
+    python -c "import phecodex_mapper, duckdb, pyarrow, openpyxl"
+    Rscript -e 'suppressPackageStartupMessages(library(data.table)); quit(status = 0)'
+    test -s /opt/phecodex/scripts/prepare_ukb_for_mapping.R
+
+%help
+    PhecodeX consortium mapper - applies a versioned PhecodeX mapping release to
+    cohort ICD events and produces a binary phenotype matrix plus QC outputs.
+    Source: https://github.com/astheeggeggs/phecode_mapping
+
+    This image adds R + data.table to the upstream definition so that the shipped
+    prepare_ukb_for_mapping.R can run. It contains NO mapping release and NO cohort
+    data; bind both in at run time.
+
+    Stage the bundle, then build:
+      ./prepare_offline_bundle.sh ./bundle
+      singularity build phecodex-mapper_0.1.0.sif singularity.def
+      apptainer build phecodex-mapper_0.1.0.sif singularity.def
+
+    Verify the release before mapping against it:
+      singularity run phecodex-mapper_0.1.0.sif \
+          python /opt/phecodex/scripts/verify_release.py --release /data/release
+
+    Map (mapping runs entirely offline):
+      singularity exec --containall \
+          --bind /secure/release:/data/release:ro \
+          --bind /secure/input:/data/input:ro \
+          --bind /secure/output:/data/output \
+          phecodex-mapper_0.1.0.sif \
+          phecodex-map run --release /data/release \
+              --cohort /data/input/cohort.csv \
+              --events /data/input/events.csv \
+              --output /data/output/phecodex_run
+
+    UK Biobank codes WHO ICD10, not ICD10CM. Declaring the wrong label does not
+    fail - it silently drops or misassigns events. See README.md.

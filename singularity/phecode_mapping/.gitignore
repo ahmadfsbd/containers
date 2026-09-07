@@ -1,0 +1,16 @@
+# Generated Singularity images
+*.sif
+*.simg
+
+# Local bundle staging outputs
+bundle/
+staging/
+downloads/
+source_archives/
+
+# Downloaded release archives
+*.tar
+*.tar.gz
+*.tgz
+*.zip
+*.sha256

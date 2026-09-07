@@ -1,0 +1,7 @@
+description: PhecodeX consortium mapper - applies a versioned PhecodeX mapping release to cohort ICD events and produces a binary phenotype matrix plus aggregate QC outputs.
+packages:
+  - phecodex-mapper
+  - r-cran-data.table
+executables:
+  - phecodex-map
+  - Rscript

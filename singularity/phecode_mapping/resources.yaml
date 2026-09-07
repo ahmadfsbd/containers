@@ -1,0 +1,51 @@
+bundle:
+  name: phecodex-distribution
+  created_for: TRE staging
+  mapper_version: "0.1.0"
+  release_tag: v1.1cm-1.0who-icd-only
+  phecodex_upstream_versions: ["1.0", "1.1"]
+  icd_only: true
+  gcs_prefix: gs://qmul-production-library-red/helper-files-and-scripts/phecodex/v1.1cm-1.0who-icd-only/
+
+# The mapper code and the mapping release ship together in one analyst bundle.
+# The image is built from the code; the release/ directory is staged to secure
+# storage and bind-mounted at run time. The image carries no map and no cohort data.
+analyst_bundle:
+  phecodex_distribution:
+    source: https://github.com/astheeggeggs/phecode_mapping/releases/download/v1.1cm-1.0who-icd-only/phecodex-cm1.1-who1.0-icd-only.tar.gz
+    checksum: https://github.com/astheeggeggs/phecode_mapping/releases/download/v1.1cm-1.0who-icd-only/phecodex-cm1.1-who1.0-icd-only.tar.gz.sha256
+    sha256: 04e6be91195f5aecadbc975c678afca2ff4fd2e4f78498ed1d55f0fde755820f
+    bytes: 4499480
+    destination: ./
+    required: true
+    note: >-
+      Self-contained. Carries the mapper source, the pinned lockfile, the upstream
+      container definitions and the mapping release. The upstream git repository is
+      not needed in the TRE - the only thing it adds is the pytest suite, which the
+      bundle does not ship.
+
+# Bind-mounted read-only at run time. Verified by scripts/verify_release.py against
+# release/manifest.json, which records a sha256 per artifact.
+expected_release_artifacts:
+  - release/manifest.json
+  - release/icd_map.csv
+  - release/icd_map.parquet
+  - release/phecode_info.csv
+  - release/phecode_info.parquet
+  - release/phecodex_reference_maps.xlsx
+  - release/phetk_custom_map_icd10.csv
+  - release/phetk_custom_map_icd10cm.csv
+  - release/recovered_codes.csv
+
+# Vocabulary labels the release can match against. The vocabulary column in the
+# events file is taken as ground truth - see README.md.
+release_vocabularies:
+  ICD10:
+    distinct_codes: 10405
+    source_files: [phecodeX_unrolled_ICD_WHO.csv]
+  ICD10CM:
+    distinct_codes: 55430
+    source_files: [phecodeX_unrolled_ICD_CM.csv]
+  ICD9CM:
+    distinct_codes: 12666
+    source_files: [phecodeX_unrolled_ICD_CM.csv]
